@@ -4,9 +4,25 @@
   <meta charset="utf-8" />
   <title>Copilot Chat</title>
   <style>
-    body { font-family: sans-serif; margin: 2em; }
-    #chat { border: 1px solid #ccc; padding: 1em; height: 300px; overflow-y: auto; }
-    #prompt { width: 80%; }
+    body {
+      font-family: sans-serif;
+      margin: 2em;
+      max-width: 700px;
+    }
+    #chat {
+      border: 1px solid #ccc;
+      padding: 1em;
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1em;
+      white-space: pre-wrap;
+    }
+    .user {
+      font-weight: bold;
+    }
+    #prompt {
+      width: 80%;
+    }
   </style>
 </head>
 <body>
@@ -16,25 +32,38 @@
   <button id="send">Send</button>
   <script>
     const chat = document.getElementById('chat');
-    document.getElementById('send').onclick = async () => {
+
+    async function send() {
       const input = document.getElementById('prompt');
-      const prompt = input.value;
+      const prompt = input.value.trim();
       input.value = '';
       if (!prompt) return;
+
       const userDiv = document.createElement('div');
       userDiv.textContent = 'You: ' + prompt;
+      userDiv.className = 'user';
       chat.appendChild(userDiv);
+
       const resp = await fetch('/api', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
+
       const text = await resp.text();
       const botDiv = document.createElement('div');
       botDiv.textContent = 'Bot: ' + text;
       chat.appendChild(botDiv);
       chat.scrollTop = chat.scrollHeight;
-    };
+    }
+
+    document.getElementById('send').addEventListener('click', send);
+    document.getElementById('prompt').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        send();
+      }
+    });
   </script>
 </body>
 </html>
