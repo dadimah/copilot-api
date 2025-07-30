@@ -104,7 +104,7 @@ def token_thread():
         get_token()
         time.sleep(25 * 60)
     
-def copilot(prompt, language='python', stop=None):
+def copilot(prompt, language='python'):
     """Request a completion from GitHub Copilot."""
     global token
     # If the token is None, get a new one
@@ -119,7 +119,6 @@ def copilot(prompt, language='python', stop=None):
             'temperature': 0,
             'top_p': 1,
             'n': 1,
-            'stop': stop or ['\n'],
             'nwo': 'github/copilot.vim',
             'stream': True,
             'extra': {
@@ -197,10 +196,9 @@ class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         if self.path == "/v1/chat/completions":
             messages = body_json.get("messages", [])
-            stop = body_json.get("stop")
             language = body_json.get("language", "python")
             prompt = build_prompt(messages)
-            completion = copilot(prompt, language, stop)
+            completion = copilot(prompt, language)
             response = {
                 "choices": [
                     {
@@ -217,8 +215,7 @@ class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         # default /api compatibility
         prompt = body_json.get("prompt")
         language = body_json.get("language", "python")
-        stop = body_json.get("stop")
-        completion = copilot(prompt, language, stop)
+        completion = copilot(prompt, language)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()

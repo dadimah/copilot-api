@@ -1,24 +1,26 @@
 # Copilot.api
 
-Provides a simple HTTP API to interface with GitHub Copilot, including native GitHub authentication.
+Provides a simple HTTP API to interface with GitHub Copilot, including native GitHub authentication.  It exposes OpenAI compatible endpoints so that tools such as [Open WebUI](https://github.com/open-webui/open-webui) can talk to Copilot.
 
 ## Installing dependencies
 
 `pip install -r requirements.txt`
 
 ## Run
+Run the server on the desired port (defaults to `8080`):
 `python3 api.py [port]`
 
-The server also exposes OpenAI-compatible endpoints under `/v1` so that tools
-like [Open WebUI](https://github.com/open-webui/open-webui) can connect. Use the
-following environment variables when starting Open WebUI:
+The server exposes OpenAI‑compatible endpoints under `/v1` so that tools like
+[Open WebUI](https://github.com/open-webui/open-webui) can connect.  When
+starting Open WebUI use the following environment variables:
 
 ```
 OPENAI_API_BASE_URLS=http://host.docker.internal:8080/v1
 OPENAI_API_KEYS=dummy
 ```
 
-Point your browser to `http://localhost:8080/` for a minimal chat UI.
+Point your browser to `http://localhost:8080/` for a small fallback UI that works
+in any modern browser.  It can be useful when you do not have Open WebUI running.
 
 ## Usage
 Send a POST request to `http://localhost:8080/api` with the following JSON body:
@@ -27,8 +29,7 @@ Send a POST request to `http://localhost:8080/api` with the following JSON body:
 ```json
 {
     "prompt": "# hello world function\n\n",
-    "language": "python",
-    "stop": ["\n"]
+    "language": "python"
 }
 ```
 
@@ -40,6 +41,6 @@ The response will be a plain text string containing the generated code.
 def hello_world():
 ```
 
-The `stop` field is optional and defaults to `["\n"]` when omitted. Use it to control where completions should stop. Omit the field entirely to allow multiline responses.
+
 
 In order to build a complete code snippet, iteratively append the generated code to the prompt and send it back to the API until the response is empty.
