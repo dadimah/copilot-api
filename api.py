@@ -82,7 +82,7 @@ def token_thread():
         get_token()
         time.sleep(25 * 60)
     
-def copilot(prompt, language='python'):
+def copilot(prompt, language='python', stop=None):
     global token
     # If the token is None, get a new one
     if token is None or is_token_invalid(token):
@@ -96,7 +96,7 @@ def copilot(prompt, language='python'):
             'temperature': 0,
             'top_p': 1,
             'n': 1,
-            'stop': ['\n'],
+            'stop': stop or ['\n'],
             'nwo': 'github/copilot.vim',
             'stream': True,
             'extra': {
@@ -149,9 +149,10 @@ class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         # Get the prompt from the request body
         prompt = body_json.get('prompt')
         language = body_json.get('language', 'python')
+        stop = body_json.get('stop', ['\n'])
 
         # Get the completion from the copilot function
-        completion = copilot(prompt, language)
+        completion = copilot(prompt, language, stop)
 
         # Send the completion as the response
         self.send_response(200)

@@ -16,7 +16,8 @@ Send a POST request to `http://localhost:8080/api` with the following JSON body:
 ```json
 {
     "prompt": "# hello world function\n\n",
-    "language": "python"
+    "language": "python",
+    "stop": ["\n"]
 }
 ```
 
@@ -27,5 +28,7 @@ The response will be a plain text string containing the generated code.
 ```text
 def hello_world():
 ```
+
+The `stop` field is optional and defaults to `["\n"]` when omitted. Use it to control where completions should stop.
 
 In order to build a complete code snippet, iteratively append the generated code to the prompt and send it back to the API until the response is empty.
