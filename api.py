@@ -1,4 +1,5 @@
 import http.server
+import os
 import threading
 import requests
 import json
@@ -138,23 +139,56 @@ def extract_exp_value(token):
     return None
 
 class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            path = os.path.join('static', 'index.html')
+        elif self.path.startswith('/static/'):
+            path = self.path.lstrip('/')
+        else:
+            self.send_error(404)
+            return
+
+        if not os.path.isfile(path):
+            self.send_error(404)
+            return
+
+        if path.endswith('.html'):
+            ctype = 'text/html'
+        elif path.endswith('.js'):
+            ctype = 'application/javascript'
+        elif path.endswith('.css'):
+            ctype = 'text/css'
+        else:
+            ctype = 'application/octet-stream'
+
+        with open(path, 'rb') as f:
+            content = f.read()
+
+        self.send_response(200)
+        self.send_header('Content-type', ctype)
+        self.end_headers()
+        self.wfile.write(content)
+
     def do_POST(self):
-        # Get the request body
-        content_length = int(self.headers['Content-Length'])
+        if self.path != '/api':
+            self.send_error(404)
+            return
+
+        content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length)
 
-        # Parse the request body as json
-        body_json = json.loads(body)
+        try:
+            body_json = json.loads(body)
+        except json.JSONDecodeError:
+            self.send_error(400, 'Invalid JSON')
+            return
 
-        # Get the prompt from the request body
         prompt = body_json.get('prompt')
         language = body_json.get('language', 'python')
         stop = body_json.get('stop', ['\n'])
 
-        # Get the completion from the copilot function
         completion = copilot(prompt, language, stop)
 
-        # Send the completion as the response
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
