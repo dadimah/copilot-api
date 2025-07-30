@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Copilot API Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #messages { white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: auto; margin-top: 20px; }
+        textarea { width: 100%; }
+    </style>
+</head>
+<body>
+    <h1>Copilot Chat</h1>
+    <textarea id="prompt" rows="4" placeholder="Enter your prompt"></textarea><br>
+    <button id="send">Send</button>
+    <div id="messages"></div>
+<script>
+document.getElementById('send').addEventListener('click', async () => {
+    const prompt = document.getElementById('prompt').value;
+    if (!prompt) return;
+    try {
+        const resp = await fetch('/api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
+        const text = await resp.text();
+        const messages = document.getElementById('messages');
+        messages.textContent += text + '\n';
+        document.getElementById('prompt').value = '';
+    } catch (err) {
+        alert('Request failed: ' + err);
+    }
+});
+</script>
+</body>
+</html>
