@@ -32,3 +32,14 @@ def hello_world():
 The `stop` field is optional and defaults to `["\n"]` when omitted. Use it to control where completions should stop.
 
 In order to build a complete code snippet, iteratively append the generated code to the prompt and send it back to the API until the response is empty.
+
+## Using with Open WebUI
+
+When running [Open WebUI](https://github.com/open-webui/open-webui) you can point it to this API by setting a couple of environment variables:
+
+```bash
+OPENAI_API_BASE_URL=http://localhost:8080/v1
+OPENAI_API_KEY=dummy
+```
+
+`OPENAI_API_KEY` can be any non-empty string; it simply satisfies the WebUI's requirement for a key.
