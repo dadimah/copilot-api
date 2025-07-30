@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Copilot Chat</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    #chat { border: 1px solid #ccc; padding: 1em; height: 300px; overflow-y: auto; }
+    #prompt { width: 80%; }
+  </style>
+</head>
+<body>
+  <h1>Copilot Chat</h1>
+  <div id="chat"></div>
+  <input id="prompt" placeholder="Enter prompt" />
+  <button id="send">Send</button>
+  <script>
+    const chat = document.getElementById('chat');
+    document.getElementById('send').onclick = async () => {
+      const input = document.getElementById('prompt');
+      const prompt = input.value;
+      input.value = '';
+      if (!prompt) return;
+      const userDiv = document.createElement('div');
+      userDiv.textContent = 'You: ' + prompt;
+      chat.appendChild(userDiv);
+      const resp = await fetch('/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      const text = await resp.text();
+      const botDiv = document.createElement('div');
+      botDiv.textContent = 'Bot: ' + text;
+      chat.appendChild(botDiv);
+      chat.scrollTop = chat.scrollHeight;
+    };
+  </script>
+</body>
+</html>
