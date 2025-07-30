@@ -139,26 +139,52 @@ def extract_exp_value(token):
 
 class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
-        # Get the request body
-        content_length = int(self.headers['Content-Length'])
-        body = self.rfile.read(content_length)
+        # Only handle known endpoints
+        if self.path not in ["/api", "/v1/chat/completions"]:
+            self.send_error(404, "Not Found")
+            return
 
-        # Parse the request body as json
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length)
         body_json = json.loads(body)
 
-        # Get the prompt from the request body
-        prompt = body_json.get('prompt')
-        language = body_json.get('language', 'python')
-        stop = body_json.get('stop', ['\n'])
+        if self.path == "/v1/chat/completions":
+            # Build prompt from chat messages
+            messages = body_json.get("messages", [])
+            prompt = "".join(m.get("content", "") for m in messages)
+            stop = body_json.get("stop", ["\n"])
+            completion = copilot(prompt, stop=stop)
 
-        # Get the completion from the copilot function
-        completion = copilot(prompt, language, stop)
+            response = {
+                "id": "copilot-api",
+                "object": "chat.completion",
+                "model": body_json.get("model", "copilot"),
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": completion,
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
 
-        # Send the completion as the response
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(completion.encode())
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+        else:  # legacy /api endpoint
+            prompt = body_json.get("prompt")
+            language = body_json.get("language", "python")
+            stop = body_json.get("stop", ["\n"])
+            completion = copilot(prompt, language, stop)
+
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(completion.encode())
 
 
 def main():
