@@ -4,8 +4,27 @@ import requests
 import json
 import time
 import sys
+import os
 
 token = None
+
+# Dummy model list for OpenAI compatibility
+MODELS = [
+    {
+        "id": "copilot",
+        "object": "model",
+        "owned_by": "copilot-api",
+    }
+]
+
+def build_prompt(messages):
+    """Concatenate message contents for OpenAI-style payloads."""
+    parts = []
+    for msg in messages:
+        content = msg.get("content")
+        if content:
+            parts.append(content)
+    return "\n".join(parts)
 
 def setup():
     resp = requests.post('https://github.com/login/device/code', headers={
@@ -64,16 +83,19 @@ def get_token():
         except FileNotFoundError:
             setup()
     # Get a session with the access token
-    resp = requests.get('https://api.github.com/copilot_internal/v2/token', headers={
-        'authorization': f'token {access_token}',
-        'editor-version': 'Neovim/0.6.1',
-        'editor-plugin-version': 'copilot.vim/1.16.0',
-        'user-agent': 'GithubCopilot/1.155.0'
-    })
-
-    # Parse the response json, isolating the token
-    resp_json = resp.json()
-    token = resp_json.get('token')
+    try:
+        resp = requests.get('https://api.github.com/copilot_internal/v2/token', headers={
+            'authorization': f'token {access_token}',
+            'editor-version': 'Neovim/0.6.1',
+            'editor-plugin-version': 'copilot.vim/1.16.0',
+            'user-agent': 'GithubCopilot/1.155.0'
+        })
+        resp.raise_for_status()
+        resp_json = resp.json()
+        token = resp_json.get('token')
+    except Exception as e:
+        print(f'Failed to refresh Copilot token: {e}')
+        token = None
 
 
 def token_thread():
@@ -83,6 +105,7 @@ def token_thread():
         time.sleep(25 * 60)
     
 def copilot(prompt, language='python', stop=None):
+    """Request a completion from GitHub Copilot."""
     global token
     # If the token is None, get a new one
     if token is None or is_token_invalid(token):
@@ -138,25 +161,66 @@ def extract_exp_value(token):
     return None
 
 class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/v1/models":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"object": "list", "data": MODELS}).encode())
+            return
+
+        path = self.path.lstrip("/") or "index.html"
+        file_path = os.path.join("static", path)
+        if os.path.exists(file_path):
+            self.send_response(200)
+            if file_path.endswith(".html"):
+                ctype = "text/html"
+            elif file_path.endswith(".js"):
+                ctype = "application/javascript"
+            else:
+                ctype = "text/plain"
+            self.send_header("Content-Type", ctype)
+            self.end_headers()
+            with open(file_path, "rb") as f:
+                self.wfile.write(f.read())
+            return
+
+        self.send_error(404, "Not Found")
+
     def do_POST(self):
-        # Get the request body
-        content_length = int(self.headers['Content-Length'])
+        content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length)
+        try:
+            body_json = json.loads(body)
+        except json.JSONDecodeError:
+            body_json = {}
 
-        # Parse the request body as json
-        body_json = json.loads(body)
+        if self.path == "/v1/chat/completions":
+            messages = body_json.get("messages", [])
+            stop = body_json.get("stop")
+            language = body_json.get("language", "python")
+            prompt = build_prompt(messages)
+            completion = copilot(prompt, language, stop)
+            response = {
+                "choices": [
+                    {
+                        "message": {"role": "assistant", "content": completion}
+                    }
+                ]
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+            return
 
-        # Get the prompt from the request body
-        prompt = body_json.get('prompt')
-        language = body_json.get('language', 'python')
-        stop = body_json.get('stop', ['\n'])
-
-        # Get the completion from the copilot function
+        # default /api compatibility
+        prompt = body_json.get("prompt")
+        language = body_json.get("language", "python")
+        stop = body_json.get("stop")
         completion = copilot(prompt, language, stop)
-
-        # Send the completion as the response
         self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         self.wfile.write(completion.encode())
 
